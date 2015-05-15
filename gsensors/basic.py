@@ -29,18 +29,19 @@ class DataSource(object):
         """ Data given to the clients on each change
         """
         res = {}
+        res["type"] = self.__class__.__name__
         res["name"] = self.name
-        res["timeout"] =  5*60, # timeout after 5min
+        res["timeout"] = 5*60 # timeout after 5min
         res["value"] = self.value
         res["unit"] = self.unit
         res["error"] = self.error
         return res
 
     def desc(self):
-        return {
-            "type": self.__class__.__name__,
-            "name": self.name,
-        }
+        res = {}
+        res["type"] = self.__class__.__name__
+        res["name"] = self.name
+        return res
 
 
 class AutoUpdateValue(DataSource):
