@@ -60,7 +60,7 @@ class PipaMQTTClient(object):
     def _mqtt_loop(self):
         while True:
             #print("mqqt loop")
-            self._mqtt_client.loop(timeout=.3)
+            self._mqtt_client.loop(timeout=.09)
             gevent.sleep(0.05)
 
 
