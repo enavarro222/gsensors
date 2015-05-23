@@ -1,4 +1,10 @@
 #-*- coding:utf-8 -*-
+""" Client for OpenWeatherMap API
+
+See:
+* http://openweathermap.org/current
+
+"""
 import logging
 from time import time
 from datetime import datetime
@@ -7,6 +13,8 @@ import requests
 import gevent
 
 from gsensors import AutoUpdateValue
+
+
 
 class OwmClient(object):
     ttl = 10*60 # make a request every 10mins max
@@ -41,16 +49,22 @@ class OwmClient(object):
 
 
 class OwmSource(AutoUpdateValue):
-    def __init__(self, name, owm_client, key, unit=""):
+    key = None
+    unit = None
+
+    def __init__(self, owm_client, name=None, key=None, unit=None):
         """
         :attr own_client: :class:`OwnClient` instance
         :attr key: key to be show splitted by '/'
         """
         self.owm_client = owm_client
         update_freq = owm_client.ttl
-        self.key = key
+        if key is not None:
+          self.key = key
+        if unit is not None:
+          self.unit = unit
         self.value = None
-        super(OwmSource, self).__init__(name=name, unit=unit, update_freq=update_freq)
+        super(OwmSource, self).__init__(name=name, unit=self.unit, update_freq=update_freq)
 
     def update(self):
         value = self.owm_client.data
@@ -58,6 +72,22 @@ class OwmSource(AutoUpdateValue):
             value = value[key]
         self.value = value
         return self.owm_client.dt
+
+class OwnTemp(OwmSource):
+    unit = "°C"
+    key = "main/celsius"  #NOTE: this key is added by OwmClient !
+
+class OwnHumidity(OwmSource):
+    unit = "%"
+    key = "main/humidity"
+
+class OwnPressure(OwmSource):
+    unit = "hPa"
+    key = "main/pressure"
+
+class OwnClouds(OwmSource):
+    unit = "%"
+    key = "clouds/all"
 
 
 
