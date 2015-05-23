@@ -54,7 +54,7 @@ class OwmSource(AutoUpdateValue):
 
     def __init__(self, owm_client, name=None, key=None, unit=None):
         """
-        :attr own_client: :class:`OwnClient` instance
+        :attr own_client: :class:`OwmClient` instance
         :attr key: key to be show splitted by '/'
         """
         self.owm_client = owm_client
@@ -73,19 +73,19 @@ class OwmSource(AutoUpdateValue):
         self.value = value
         return self.owm_client.dt
 
-class OwnTemp(OwmSource):
+class OwmTemp(OwmSource):
     unit = "°C"
     key = "main/celsius"  #NOTE: this key is added by OwmClient !
 
-class OwnHumidity(OwmSource):
+class OwmHumidity(OwmSource):
     unit = "%"
     key = "main/humidity"
 
-class OwnPressure(OwmSource):
+class OwmPressure(OwmSource):
     unit = "hPa"
     key = "main/pressure"
 
-class OwnClouds(OwmSource):
+class OwmClouds(OwmSource):
     unit = "%"
     key = "clouds/all"
 
