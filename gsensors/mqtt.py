@@ -1,6 +1,8 @@
 #-*- coding:utf-8 -*-
 """ MQTT sources based on `paho-mqtt`
 """
+# a lot of good note about MQTT:
+# http://www.hivemq.com/mqtt-essentials-wrap-up/
 import logging
 from datetime import datetime
 
@@ -59,14 +61,18 @@ class PipaMQTTClient(object):
         while True:
             #print("mqqt loop")
             self._mqtt_client.loop(timeout=.3)
-            gevent.sleep(0.6)
+            gevent.sleep(0.05)
 
 
 class MQTTSource(DataSource):
     """ MQTT source for integer data
     """
-    def __init__(self, mqtt_client, topic, name, unit=None):
-        super(MQTTSource, self).__init__(name=name, unit=unit)
+
+    def __init__(self, mqtt_client, topic, name=None, unit=None, timeout=None):
+        assert "#" not in topic
+        if name is None:
+            name= topic.replace("/", "_")
+        super(MQTTSource, self).__init__(name=name, unit=unit, timeout=timeout)
         self.mqtt_client = mqtt_client
         self.mqtt_client.register_source(self, topic=topic)
         self.error = "No data"

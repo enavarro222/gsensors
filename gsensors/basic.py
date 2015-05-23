@@ -7,18 +7,24 @@ import gevent
 class DataSource(object):
     """ Abstract data source model
     """
-    def __init__(self, name=None, unit=None):
+    timeout = 1*60 # by default 1min
+
+    def __init__(self, name=None, unit=None, timeout=None):
         self.name = name or self.__class__.__name__
         self.unit = unit
         self.value = 0
         self.error = None
+        if timeout is not None:
+            self.timeout = timeout
         self.callbacks = []
+        self.last_update = None     # datetime on last update
         self._logger = logging.getLogger(self.name)
 
     def on_change(self, callback):
         self.callbacks.append(callback)
 
     def changed(self):
+        self.last_update = datetime.now()
         for callback in self.callbacks:
             callback(self)
 
@@ -31,10 +37,12 @@ class DataSource(object):
         res = {}
         res["type"] = self.__class__.__name__
         res["name"] = self.name
-        res["timeout"] = 5*60 # timeout after 5min
+        res["timeout"] = self.timeout
         res["value"] = self.value
         res["unit"] = self.unit
         res["error"] = self.error
+        if self.last_update is not None:
+            res["last_update"] = self.last_update.isoformat()
         return res
 
     def desc(self):
@@ -54,12 +62,15 @@ class AutoUpdateValue(DataSource):
 
     def __init__(self, name=None, unit=None, update_freq=None):
         super(AutoUpdateValue, self).__init__(name=name, unit=unit)
+        # update timeput
         self.worker = None
         self.last_update = None
         if update_freq is not None:
             self.update_freq = update_freq or AutoUpdateValue.update_freq
-        self.prevous_update = None
-        self.last_update = None
+        self.timeout = self.update_freq * 2 # timeout after 2 update fail
+        # datetime of last and previous read (self.update return datetime)
+        self.last_read = None
+        self.prevous_read = None
 
     def update(self):
         """ Abstract update method
@@ -70,15 +81,15 @@ class AutoUpdateValue(DataSource):
 
     def checked_update(self):
         try:
-            # run the update and get last_update "date"
-            last_update = self.update()
+            self.prevous_read = self.last_read
+            # run the update and get last_read "date"
+            last_read = self.update()
             # check error
             self.error = None
-            if last_update is None:
-                last_update = datetime.now()
-            self.prevous_update = self.last_update
-            self.last_update = last_update
-            if self.last_update != self.prevous_update:
+            if last_read is None:
+                last_read = datetime.now()
+            self.last_read = last_read
+            if self.last_read != self.prevous_read:
                 self.changed()
         except Exception as err:
             self.error = "Error"
@@ -95,12 +106,6 @@ class AutoUpdateValue(DataSource):
         self.checked_update()
         self.worker = gevent.spawn(self.update_work)
 
-    def export(self):
-        res = super(AutoUpdateValue, self).export()
-        res["timeout"] = self.update_freq * 5 # timeout after 5 update fail
-        if self.last_update is not None:
-            res["last_update"] = self.last_update.isoformat()
-        return res
 
 
 class StupidCount(AutoUpdateValue):
