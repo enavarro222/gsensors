@@ -5,14 +5,17 @@ import logging
 from datetime import datetime
 
 import gevent
+import logging
 import serial
 import xmltodict
+from xml.parsers.expat import ExpatError
 
 from gsensors.basic import DataSource
 
 
 class CurrentcostSerial(object):
     def __init__(self, serial_dev, **kwargs):
+        self._logger = logging.getLogger("gsensors.CCSerial")
         self._serial_dev = serial_dev
         self._ser = None
         self._sources = []
@@ -40,7 +43,10 @@ class CurrentcostSerial(object):
                     data = self._ser.readline().strip()
                     ## remove "empty" char
                     data = data.replace("\x00", "")
-                    data = xmltodict.parse(data)
+                    try:
+                        data = xmltodict.parse(data)
+                    except ExpatError as err:
+                        self._logger.error(str(err))
                     self.get_data(data)
                 gevent.sleep(0.5)
         finally:
