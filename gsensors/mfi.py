@@ -53,6 +53,7 @@ class MFIDevice(object):
     #doc de l'API:
     # http://community.ubnt.com/t5/mFi/mPower-mFi-Switch-and-mFi-In-Wall-Outlet-HTTP-API/td-p/1076449
     def __init__(self, host):
+        self._logger = logging.getLogger("gsensors.mfi.MFIDevice")
         self._host = host
         self.running = False
         self._token = None
@@ -124,8 +125,12 @@ class MFIDevice(object):
 
     def _update(self):
         while True:
-            data = self.get_json()
-            self.incoming_data(data)
+            try:
+                data = self.get_json()
+                self.incoming_data(data)
+            except Exception as err:
+                #TODO indicate error to sources
+                self._logger.error("update error: %s" % err)
             gevent.sleep(10)
 
     def start(self):
