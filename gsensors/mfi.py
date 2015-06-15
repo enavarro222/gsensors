@@ -11,6 +11,7 @@ import gevent.monkey
 gevent.monkey.patch_all()   # needed for websocket
 
 import requests
+import logging
 import random
 import json
 
@@ -21,6 +22,7 @@ from gsensors.basic import DataSource
 
 class MFIWebSocketClient(WebSocketBaseClient):
     def __init__(self, mfi_device):
+        self._logger = logging.getLogger("gsensors.mfi.MFIWebSocketClient")
         self.mfi_device = mfi_device
         super(MFIWebSocketClient, self).__init__(self.mfi_url, protocols=['mfi-protocol'])
 
@@ -32,8 +34,11 @@ class MFIWebSocketClient(WebSocketBaseClient):
         gevent.spawn(self.run)
 
     def received_message(self, msg):
-        data = json.loads(str(msg))
-        self.mfi_device.incoming_ws_data(data)
+        try:
+            data = json.loads(str(msg))
+            self.mfi_device.incoming_ws_data(data)
+        except ValueError as err:
+          self._logger.error(err)
 
 #    def opened(self):
 #        print "opened"
