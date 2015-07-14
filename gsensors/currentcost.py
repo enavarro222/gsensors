@@ -1,5 +1,5 @@
 #-*- coding:utf-8 -*-
-""" MQTT sources based on `paho-mqtt`
+""" Data source for CurrentCost Serial (ENVI)
 """
 import logging
 from datetime import datetime
