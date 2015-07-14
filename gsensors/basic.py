@@ -18,7 +18,7 @@ class DataSource(object):
             self.timeout = timeout
         self.callbacks = []
         self.last_update = None     # datetime on last update
-        self._logger = logging.getLogger(self.name)
+        self._logger = logging.getLogger("gsensors.%s" % self.name)
 
     def on_change(self, callback):
         self.callbacks.append(callback)
