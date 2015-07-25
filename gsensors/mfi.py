@@ -58,6 +58,7 @@ class MFIDevice(object):
         self.running = False
         self._token = None
         self._sources = defaultdict(list)
+        self.data_sensors = {}
 
     def register_source(self, port, source):
         self._sources[port].append(source)
@@ -100,11 +101,23 @@ class MFIDevice(object):
         #		}
         return res.json()
 
+    def get_output(self, port):
+        #data = self.get_json()
+        #XXX check if port exist
+        return self.data_sensors[port]["output"]
+
     def set_output(self, port, value):
         data = {
             "output": 0 if value in [0, False, "off"] else 1,
         }
         res = requests.post("%s/sensors/%s" % (self.url, port), data, cookies=self.cookies)
+
+    def SwitchAction(self, port):
+        def _action(*args, **kwargs):
+            value = not self.get_output(port)
+            print value
+            self.set_output(port, value)
+        return _action
 
     def incoming_ws_data(self, data):
         data["_source"] = "ws"  #indicate it come's from web socket
@@ -116,11 +129,15 @@ class MFIDevice(object):
 
     def _incoming_data(self, data):
         ports = [(sensor["port"], sensor) for sensor in data["sensors"]]
-        for port, sensor in ports:
+        for port, sensor_values in ports:
+            if port in self.data_sensors:
+                self.data_sensors[port].update(sensor_values)
+            else:
+                self.data_sensors[port] = sensor_values
             for source in self._sources[port]:
                 _data = {}
                 _data["_source"] = data["_source"]
-                _data["sensor"] = sensor
+                _data["sensor"] = sensor_values
                 source.update(_data)
 
     def _update(self):
@@ -137,7 +154,7 @@ class MFIDevice(object):
         if not self.running:
           ws = MFIWebSocketClient(self)
           gevent.spawn(self._update)
-          ws.connect()
+          ws.connect() #TODO XXX manage reconnection
           self.running = True
 
 
@@ -177,6 +194,7 @@ class MFISource(DataSource):
         """ Should be overriden
         """
         return data
+
 
 
 class MFIPower(MFISource):

@@ -17,7 +17,7 @@ from gsensors import AutoUpdateValue
 
 
 class OwmClient(object):
-    ttl = 10*60 # make a request every 10mins max
+    ttl = 10 #10*60 # make a request every 10mins max
 
     def __init__(self, city):
         self.city = city

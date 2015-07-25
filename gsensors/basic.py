@@ -1,6 +1,7 @@
 #-*- coding:utf-8 -*-
 import logging
 from datetime import datetime
+from collections import defaultdict
 
 import gevent
 
@@ -16,16 +17,22 @@ class DataSource(object):
         self.error = None
         if timeout is not None:
             self.timeout = timeout
-        self.callbacks = []
+        self.cb_changed = []
+        self.cb_value = defaultdict(list)
         self.last_update = None     # datetime on last update
         self._logger = logging.getLogger("gsensors.%s" % self.name)
 
     def on_change(self, callback):
-        self.callbacks.append(callback)
+        self.cb_changed.append(callback)
+
+    def on_value(self, value, callback):
+        self.cb_value[value].append(callback)
 
     def changed(self):
         self.last_update = datetime.now()
-        for callback in self.callbacks:
+        for callback in self.cb_value[self.value]:
+            callback(self)
+        for callback in self.cb_changed:
             callback(self)
 
     def start(self):
