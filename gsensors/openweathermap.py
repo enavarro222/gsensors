@@ -62,7 +62,6 @@ class OwmSource(AutoUpdateValue):
           self.key = key
         if unit is not None:
           self.unit = unit
-        self.value = None
         super(OwmSource, self).__init__(name=name, unit=self.unit, update_freq=update_freq)
 
     def update(self):

@@ -5,9 +5,28 @@ from collections import defaultdict
 
 import gevent
 
+
+class GSensorApp():
+    debug = False
+
+    def __init__(self):
+        self.sources = []
+
+    def add(self, source):
+        self.sources.append(source)
+        source.debug = self.debug
+
+    def run(self):
+        for source in self.sources:
+            source.start()
+        # wait
+        gevent.wait()
+
+
 class DataSource(object):
     """ Abstract data source model
     """
+    debug = False
     timeout = -1 # no timeout by default
 
     def __init__(self, name=None, unit=None, timeout=None):
@@ -46,11 +65,11 @@ class DataSource(object):
         
         Callbacks are trigger if update_time or value haved changed
         """
-        changed = self._value != val or self.last_update != last_update
+        changed = self._value != val or self.last_update != update_time
         self._value = val
         if update_time is None:
-            last_update = datetime.now()
-        self.last_update = last_update
+            update_time = datetime.now()
+        self.last_update = update_time
         if changed:
             self._changed()
 
@@ -134,6 +153,8 @@ class AutoUpdateValue(DataSource):
         except Exception as err:
             self.error = "Error"
             self._logger.error("update error: %s" % err)
+            if self.debug:
+                raise
 
     def update_work(self):
         while True:
@@ -142,7 +163,6 @@ class AutoUpdateValue(DataSource):
             gevent.sleep(self.update_freq)
 
     def start(self):
-        self.checked_update()
         self.worker = gevent.spawn(self.update_work)
 
 
