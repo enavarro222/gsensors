@@ -8,32 +8,74 @@ import gevent
 class DataSource(object):
     """ Abstract data source model
     """
-    timeout = 1*60 # by default 1min
+    timeout = -1 # no timeout by default
 
     def __init__(self, name=None, unit=None, timeout=None):
         self.name = name or self.__class__.__name__
+        self._logger = logging.getLogger("gsensors.%s" % self.name)
+
         self.unit = unit
-        self.value = 0
-        self.error = None
+        self._value = 0
+        self._error = None
+
         if timeout is not None:
             self.timeout = timeout
         self.cb_changed = []
         self.cb_value = defaultdict(list)
         self.last_update = None     # datetime on last update
-        self._logger = logging.getLogger("gsensors.%s" % self.name)
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, val):
+        """ Reset the value (and last_update) if the value changed OR if the
+        timeout is over.
+        
+        To force update with same value (within timeout)
+        """
+        now = datetime.now()
+        if val != self._value or (timeout >= 0 and now-self.last_update > timeout):
+            self._value = val
+            self.last_update = now
+            self._changed()
+
+    def set_value(self, val, update_time=None):
+        """ Set the value (and update_time)
+        
+        Callbacks are trigger if update_time or value haved changed
+        """
+        changed = self._value != val or self.last_update != last_update
+        self._value = val
+        if update_time is None:
+            last_update = datetime.now()
+        self.last_update = last_update
+        if changed:
+            self._changed()
+
+    @property
+    def error(self):
+        return self._error
+
+    @error.setter
+    def error(self, err):
+        if err != self._error:
+            self._error = err
+            self._changed()
+
+    def _changed(self):
+        self.last_update = datetime.now()
+        for callback in self.cb_value[self.value]:
+            callback(self)
+        for callback in self.cb_changed:
+            callback(self)
 
     def on_change(self, callback):
         self.cb_changed.append(callback)
 
     def on_value(self, value, callback):
         self.cb_value[value].append(callback)
-
-    def changed(self):
-        self.last_update = datetime.now()
-        for callback in self.cb_value[self.value]:
-            callback(self)
-        for callback in self.cb_changed:
-            callback(self)
 
     def start(self):
         pass
@@ -81,26 +123,16 @@ class AutoUpdateValue(DataSource):
 
     def update(self):
         """ Abstract update method
-        
-        Returns None or the last date of the setted value
         """
-        return None
+        self.value = 0
+        self.error = None
+        raise NotImplementedError("Should be overiden in subclass")
 
     def checked_update(self):
         try:
-            self.prevous_read = self.last_read
-            # run the update and get last_read "date"
-            last_read = self.update()
-            # check error
-            self.error = None
-            if last_read is None:
-                last_read = datetime.now()
-            self.last_read = last_read
-            if self.last_read != self.prevous_read:
-                self.changed()
+            self.update()
         except Exception as err:
             self.error = "Error"
-            self.changed()
             self._logger.error("update error: %s" % err)
 
     def update_work(self):

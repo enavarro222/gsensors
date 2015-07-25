@@ -1,5 +1,5 @@
 #-*- coding:utf-8 -*-
-""" MQTT sources based on `paho-mqtt`
+""" Data sources for MFI (ubuquity) devices
 """
 import logging
 from datetime import datetime
@@ -168,7 +168,6 @@ class MFISource(DataSource):
         self.mfi_device.register_source(self.port, self)
         self.error = "No data"
 
-
     def start(self):
         self.mfi_device.start()
 
@@ -179,12 +178,11 @@ class MFISource(DataSource):
             return
         try:
             self.value = self.parse_data(data)
-            self.error = ""
+            self.error = None
         except KeyError, ValueError:
             self.error = "Invalid data"
         except:
             self.error = "Unknow error"
-        self.changed()
 
     def start(self):
         # start client (if needed)

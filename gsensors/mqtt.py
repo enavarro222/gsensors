@@ -32,6 +32,7 @@ class PipaMQTTClient(object):
         return _action
 
     def on_connect(self, client, userdata, flags, rc):
+        ###XXX: logging
         print("Connected with result code "+str(rc))
         # Subscribing in on_connect() means that if we lose the connection and
         # reconnect then subscriptions will be renewed.
@@ -41,6 +42,7 @@ class PipaMQTTClient(object):
             client.subscribe(topic)
 
     def on_message(self, client, userdata, msg):
+        ###XXX: logging
         #print("%s: %s" % (msg.topic, msg.payload))
         if msg.topic in self.topics_sources:
             source = self.topics_sources[msg.topic]
@@ -72,7 +74,6 @@ class PipaMQTTClient(object):
 class MQTTSource(DataSource):
     """ MQTT source for integer data
     """
-
     def __init__(self, mqtt_client, topic, name=None, unit=None, timeout=None):
         assert "#" not in topic
         if name is None:
@@ -86,12 +87,11 @@ class MQTTSource(DataSource):
         self._logger.info("%s: get data (%s)" % (self.name, msg.payload))
         try:
             self.value = self.parse_msg(msg)
-            self.error = ""
+            self.error = None
         except ValueError:
             self.error = "Invalid data"
         except:
             self.error = "Unknow error"
-        self.changed()
 
     def start(self):
         # start client (if needed)
