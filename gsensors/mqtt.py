@@ -14,6 +14,7 @@ from gsensors.basic import DataSource
 class PipaMQTTClient(object): 
 
     def __init__(self, host, port=1883, **kwargs):
+        self._logger = logging.getLogger("gsensors.PipaMQTTClient")
         self._host = host
         self._port = port
         self._mqtt_client = Client()
@@ -24,16 +25,25 @@ class PipaMQTTClient(object):
         self.running = False
 
     def publish(self, topic, payload=None, qos=0, retain=False):
+        # check connected
+        if not self.running:
+            raise RuntimeError("MQTT client not running ! ")
         self._mqtt_client.publish(topic, payload=payload, qos=qos, retain=retain)
 
     def PublishAction(self, topic, payload=None):
-        def _action(*args, **kwargs):
-            self.publish(topic, payload=payload)
+        if payload is None:
+            def _action(source, *args, **kwargs):
+                data = "%s" % source.value
+                self._logger.debug("publish %s: %s" % (topic, data))
+                self.publish(topic, payload=data)
+        else:
+            def _action(*args, **kwargs):
+                self._logger.debug("publish %s: %s" % (topic, payload))
+                self.publish(topic, payload=payload)
         return _action
 
     def on_connect(self, client, userdata, flags, rc):
-        ###XXX: logging
-        print("Connected with result code "+str(rc))
+        self._logger.info("Connected with result code: "+str(rc))
         # Subscribing in on_connect() means that if we lose the connection and
         # reconnect then subscriptions will be renewed.
         #client.subscribe("$SYS/#")
@@ -42,8 +52,7 @@ class PipaMQTTClient(object):
             client.subscribe(topic)
 
     def on_message(self, client, userdata, msg):
-        ###XXX: logging
-        #print("%s: %s" % (msg.topic, msg.payload))
+        self._logger.debug("get a msg %s: %s" % (msg.topic, msg.payload))
         if msg.topic in self.topics_sources:
             source = self.topics_sources[msg.topic]
             source.update(msg)

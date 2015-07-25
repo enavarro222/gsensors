@@ -11,7 +11,7 @@ class VigicruesStation(object):
     #TODO: récupérer les info sur la station (vile/nom/rivière)
     #TODO: récupérer les débit si disonible
 
-    ttl = 15*60 # make a request every 10mins max
+    ttl = 15*60 # make a request every 15mins max
 
     def __init__(self, station_id):
         self.station_id = station_id
