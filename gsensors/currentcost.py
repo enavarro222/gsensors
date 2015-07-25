@@ -78,12 +78,11 @@ class CurrentcostWatts(CurrentcostSource):
         self._logger.info("%s: get data (%s)" % (self.name, data))
         try:
             self.value = int(data)
-            self.error = ""
+            self.error = None
         except ValueError:
             self.error = "Invalid data"
         except:
             self.error = "Unknow error"
-        self.changed()
 
 
 class CurrentcostTemp(CurrentcostSource):
@@ -96,12 +95,11 @@ class CurrentcostTemp(CurrentcostSource):
         self._logger.info("%s: get data (%s)" % (self.name, data))
         try:
             self.value = float(data)
-            self.error = ""
+            self.error = None
         except ValueError:
             self.error = "Invalid data"
         except:
             self.error = "Unknow error"
-        self.changed()
 
 
 def main():

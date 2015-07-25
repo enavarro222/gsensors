@@ -64,8 +64,7 @@ class VigicruesSource(AutoUpdateValue):
         super(VigicruesSource, self).__init__(name=name, unit="m", update_freq=update_freq)
 
     def update(self):
-        self.value = self.vgs.hauteur
-        return self.vgs.date
+        self.set_value(self.vgs.hauteur, self.vgs.date)
 
 
 def main():
