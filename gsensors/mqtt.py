@@ -26,6 +26,11 @@ class PipaMQTTClient(object):
     def publish(self, topic, payload=None, qos=0, retain=False):
         self._mqtt_client.publish(topic, payload=payload, qos=qos, retain=retain)
 
+    def PublishAction(self, topic, payload=None):
+        def _action(*args, **kwargs):
+            self.publish(topic, payload=payload)
+        return _action
+
     def on_connect(self, client, userdata, flags, rc):
         print("Connected with result code "+str(rc))
         # Subscribing in on_connect() means that if we lose the connection and
