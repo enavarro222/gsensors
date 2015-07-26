@@ -5,6 +5,7 @@ from collections import defaultdict
 
 import gevent
 
+from gsensors.utils import full_exc_info
 
 class GSensorApp():
     debug = False
@@ -86,9 +87,16 @@ class DataSource(object):
     def _changed(self):
         self.last_update = datetime.now()
         for callback in self.cb_value[self.value]:
-            callback(self)
+            self._checked_call(callback)
         for callback in self.cb_changed:
+            self._checked_call(callback)
+
+    def _checked_call(self, callback):
+        try:
             callback(self)
+        except Exception as err:
+            self.error = "Error"
+            self._logger.error("Callback error: %s" % err, exc_info=full_exc_info())
 
     def on_change(self, callback):
         self.cb_changed.append(callback)
@@ -147,19 +155,17 @@ class AutoUpdateValue(DataSource):
         self.error = None
         raise NotImplementedError("Should be overiden in subclass")
 
-    def checked_update(self):
+    def _checked_update(self):
         try:
             self.update()
         except Exception as err:
             self.error = "Error"
-            self._logger.error("update error: %s" % err)
-            if self.debug:
-                raise
+            self._logger.error("Update error: %s" % err, exc_info=full_exc_info())
 
     def update_work(self):
         while True:
             self._logger.info("Update !")
-            self.checked_update()
+            self._checked_update()
             gevent.sleep(self.update_freq)
 
     def start(self):
