@@ -79,8 +79,8 @@ class MFIDevice(object):
        return ''.join(random.choice('0123456789abcdef') for x in range(32))
 
     def login(self, user, password):
+        self._logger.debug("Login with username: %s" % user)
         self._token = MFIDevice.random_token()
-        print self._token
         data = {
             "username": user,
             "password": password,
@@ -115,7 +115,6 @@ class MFIDevice(object):
     def SwitchAction(self, port):
         def _action(*args, **kwargs):
             value = not self.get_output(port)
-            print value
             self.set_output(port, value)
         return _action
 
@@ -192,7 +191,6 @@ class MFISource(DataSource):
         """ Should be overriden
         """
         return data
-
 
 
 class MFIPower(MFISource):

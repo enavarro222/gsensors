@@ -95,7 +95,7 @@ class MQTTSource(DataSource):
     def update(self, msg):
         self._logger.info("%s: get data (%s)" % (self.name, msg.payload))
         try:
-            self.value = self.parse_msg(msg)
+            self.set_value(self.parse_msg(msg))
             self.error = None
         except ValueError:
             self.error = "Invalid data"

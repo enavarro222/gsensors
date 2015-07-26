@@ -5,7 +5,7 @@ from influxdb import InfluxDBClient
 
 class InfluxDBPublish(object):
 
-    def __init__(self, influxdb, measurement, tags)
+    def __init__(self, influxdb, measurement, tags):
         assert(isinstance(influxdb, InfluxDBClient))
         self.influxdb = influxdb
         self.tags = tags
