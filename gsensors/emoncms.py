@@ -32,11 +32,14 @@ class EmoncmsSource(AutoUpdateValue):
 
     def update(self):
         values = self.emoncms_client.get_value(self.feedid)
-        self.value = float(values["value"])
+        val = float(values["value"])
+        self.set_value(val, update_time=values["date"])
+        self.error = None
+        # compute plots
+        # FIXME: remove it ?
         for plot_name, plot_cfg in self.plots_cfg.iteritems():
             # TODO check if update needed
             self.plots[plot_name] = self.emoncms_client.get_data(fid=self.feedid, **plot_cfg)
-        return values["date"]
 
     def export(self):
         res = super(EmoncmsSource, self).export()

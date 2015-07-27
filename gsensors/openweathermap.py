@@ -15,7 +15,6 @@ import gevent
 from gsensors import AutoUpdateValue
 
 
-
 class OwmClient(object):
     ttl = 10*60 # make a request every 10mins max
 
@@ -63,15 +62,13 @@ class OwmSource(AutoUpdateValue):
           self.key = key
         if unit is not None:
           self.unit = unit
-        self.value = None
         super(OwmSource, self).__init__(name=name, unit=self.unit, update_freq=update_freq)
 
     def update(self):
         value = self.owm_client.data
         for key in self.key.split("/"):
             value = value[key]
-        self.value = value
-        return self.owm_client.dt
+        self.set_value(value, self.owm_client.dt)
 
 class OwmTemp(OwmSource):
     unit = "°C"
