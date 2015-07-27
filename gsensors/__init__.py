@@ -1,5 +1,5 @@
 #-*- coding:utf-8 -*-
 
-from gsensors.basic import DataSource, AutoUpdateValue
+from gsensors.basic import GSensorApp, DataSource, AutoUpdateValue
 
-__all__ = ["DataSource", "AutoUpdateValue"]
+__all__ = ["GSensorApp", "DataSource", "AutoUpdateValue"]

@@ -1,32 +1,108 @@
 #-*- coding:utf-8 -*-
 import logging
 from datetime import datetime
+from collections import defaultdict
 
 import gevent
+
+from gsensors.utils import full_exc_info
+
+class GSensorApp():
+    debug = False
+
+    def __init__(self):
+        self.sources = []
+
+    def add(self, source):
+        self.sources.append(source)
+        source.debug = self.debug
+
+    def run(self):
+        for source in self.sources:
+            source.start()
+        # wait
+        gevent.wait()
+
 
 class DataSource(object):
     """ Abstract data source model
     """
-    timeout = 1*60 # by default 1min
+    debug = False
+    timeout = -1 # no timeout by default
 
     def __init__(self, name=None, unit=None, timeout=None):
         self.name = name or self.__class__.__name__
-        self.unit = unit
-        self.value = 0
-        self.error = None
-        if timeout is not None:
-            self.timeout = timeout
-        self.callbacks = []
-        self.last_update = None     # datetime on last update
         self._logger = logging.getLogger("gsensors.%s" % self.name)
 
-    def on_change(self, callback):
-        self.callbacks.append(callback)
+        self.unit = unit
+        self._value = 0
+        self._error = None
 
-    def changed(self):
+        if timeout is not None:
+            self.timeout = timeout
+        self.cb_changed = []
+        self.cb_value = defaultdict(list)
+        self.last_update = None     # datetime on last update
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, val):
+        """ Reset the value (and last_update) if the value changed OR if the
+        timeout is over.
+        
+        To force update with same value (within timeout)
+        """
+        now = datetime.now()
+        if val != self._value or (timeout >= 0 and now-self.last_update > timeout):
+            self._value = val
+            self.last_update = now
+            self._changed()
+
+    def set_value(self, val, update_time=None):
+        """ Set the value (and update_time)
+        
+        Callbacks are trigger if update_time or value haved changed
+        """
+        changed = self._value != val or self.last_update != update_time
+        self._value = val
+        if update_time is None:
+            update_time = datetime.now()
+        self.last_update = update_time
+        if changed:
+            self._changed()
+
+    @property
+    def error(self):
+        return self._error
+
+    @error.setter
+    def error(self, err):
+        if err != self._error:
+            self._error = err
+            self._changed()
+
+    def _changed(self):
         self.last_update = datetime.now()
-        for callback in self.callbacks:
+        for callback in self.cb_value[self.value]:
+            self._checked_call(callback)
+        for callback in self.cb_changed:
+            self._checked_call(callback)
+
+    def _checked_call(self, callback):
+        try:
             callback(self)
+        except Exception as err:
+            self.error = "Error"
+            self._logger.error("Callback error: %s" % err, exc_info=full_exc_info())
+
+    def on_change(self, callback):
+        self.cb_changed.append(callback)
+
+    def on_value(self, value, callback):
+        self.cb_value[value].append(callback)
 
     def start(self):
         pass
@@ -74,36 +150,25 @@ class AutoUpdateValue(DataSource):
 
     def update(self):
         """ Abstract update method
-        
-        Returns None or the last date of the setted value
         """
-        return None
+        self.value = 0
+        self.error = None
+        raise NotImplementedError("Should be overiden in subclass")
 
-    def checked_update(self):
+    def _checked_update(self):
         try:
-            self.prevous_read = self.last_read
-            # run the update and get last_read "date"
-            last_read = self.update()
-            # check error
-            self.error = None
-            if last_read is None:
-                last_read = datetime.now()
-            self.last_read = last_read
-            if self.last_read != self.prevous_read:
-                self.changed()
+            self.update()
         except Exception as err:
             self.error = "Error"
-            self.changed()
-            self._logger.error("update error: %s" % err)
+            self._logger.error("Update error: %s" % err, exc_info=full_exc_info())
 
     def update_work(self):
         while True:
             self._logger.info("Update !")
-            self.checked_update()
+            self._checked_update()
             gevent.sleep(self.update_freq)
 
     def start(self):
-        self.checked_update()
         self.worker = gevent.spawn(self.update_work)
 
 
