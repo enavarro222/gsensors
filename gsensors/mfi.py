@@ -2,6 +2,7 @@
 """ Data sources for MFI (ubuquity) devices
 """
 import logging
+from time import time
 from datetime import datetime
 
 from collections import defaultdict
@@ -10,15 +11,20 @@ import gevent
 import gevent.monkey
 gevent.monkey.patch_all()   # needed for websocket
 
-import requests
-import logging
 import random
 import json
+
+import requests
+from requests.exceptions import TooManyRedirects
 
 from ws4py.client import WebSocketBaseClient
 
 from gsensors.basic import DataSource
+from gsensors.utils import full_exc_info
 
+
+class MFIConnectionError(RuntimeError):
+    pass
 
 class MFIWebSocketClient(WebSocketBaseClient):
     def __init__(self, mfi_device):
@@ -32,6 +38,9 @@ class MFIWebSocketClient(WebSocketBaseClient):
 
     def handshake_ok(self):
         gevent.spawn(self.run)
+
+    def closed(self, code, reason=None):
+        self._logger.warning("connection closed (%s - %s)" % (code, reason))
 
     def received_message(self, msg):
         try:
@@ -50,15 +59,21 @@ class MFIWebSocketClient(WebSocketBaseClient):
 
 
 class MFIDevice(object):
+
+    get_update_freq = 15 # Update data with a full HTTP GET every... (in seconds)
+
     #doc de l'API:
     # http://community.ubnt.com/t5/mFi/mPower-mFi-Switch-and-mFi-In-Wall-Outlet-HTTP-API/td-p/1076449
-    def __init__(self, host):
+    def __init__(self, host, user, password):
         self._logger = logging.getLogger("gsensors.mfi.MFIDevice")
         self._host = host
+        self._user = user
+        self._password = password
         self.running = False
         self._token = None
         self._sources = defaultdict(list)
         self.data_sensors = {}
+        self.login()
 
     def register_source(self, port, source):
         self._sources[port].append(source)
@@ -78,12 +93,12 @@ class MFIDevice(object):
     def random_token():
        return ''.join(random.choice('0123456789abcdef') for x in range(32))
 
-    def login(self, user, password):
-        self._logger.debug("Login with username: %s" % user)
+    def login(self):
+        self._logger.debug("Login with username: %s" % self._user)
         self._token = MFIDevice.random_token()
         data = {
-            "username": user,
-            "password": password,
+            "username": self._user,
+            "password": self._password,
         }
         res = requests.post(self.url + "/login.cgi", data, cookies=self.cookies)
 
@@ -91,7 +106,10 @@ class MFIDevice(object):
         requests.get(self.url + "/logout.cgi", cookies=self.cookies)
 
     def get_json(self):
-        res = requests.get(self.url + "/sensors", cookies=self.cookies)
+        try:
+            res = requests.get(self.url + "/sensors", cookies=self.cookies, timeout=3)
+        except TooManyRedirects:
+            raise MFIConnectionError()
         ## convert to KwH
         #		if (row.prevmonth) {
         #			row.prevmonth *= 0.0003125;
@@ -99,7 +117,13 @@ class MFIDevice(object):
         #		if (row.thismonth) {
         #			row.thismonth *= 0.0003125;
         #		}
-        return res.json()
+        ##
+        #TODO: try a better way to check connection
+        try:
+            result = res.json()
+        except ValueError:
+            raise MFIConnectionError()
+        return result
 
     def get_output(self, port):
         #data = self.get_json()
@@ -140,20 +164,33 @@ class MFIDevice(object):
                 source.update(_data)
 
     def _update(self):
+        ws = MFIWebSocketClient(self)
+        ws.connect()
         while True:
+            sleep_time = self.get_update_freq
+            begin_at = time()
             try:
                 data = self.get_json()
                 self.incoming_data(data)
+            except MFIConnectionError:
+                self._logger.warning("connection error")
+                # reconnect
+                ws.close()
+                self.login()
+                ws = MFIWebSocketClient(self)
+                ws.connect()
+                sleep_time = .05 # retry quickly
             except Exception as err:
                 #TODO indicate error to sources
-                self._logger.error("update error: %s" % err)
-            gevent.sleep(10)
+                #self._logger.error("update error: %s" % err)
+                self._logger.error("update error: %s" % err, exc_info=full_exc_info())
+            self._logger.debug("GET updated in %1.2fsec" % (time()-begin_at))
+            sleep_time = max(0.01, sleep_time - (time()-begin_at))
+            gevent.sleep(sleep_time)
 
     def start(self):
         if not self.running:
-          ws = MFIWebSocketClient(self)
           gevent.spawn(self._update)
-          ws.connect() #TODO XXX manage reconnection
           self.running = True
 
 
@@ -176,7 +213,7 @@ class MFISource(DataSource):
         if data["_source"] != "ws":
             return
         try:
-            self.value = self.parse_data(data)
+            self.set_value(self.parse_data(data))
             self.error = None
         except KeyError, ValueError:
             self.error = "Invalid data"
