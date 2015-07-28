@@ -57,7 +57,7 @@ class VigicruesSource(AutoUpdateValue):
         :attr station_id: vigicrues station id
         """
         if name is None:
-            name = "vgs%d" % station_id
+            name = "vgs%s" % station_id
         #:attr vgs: :class:`VigicruesStation` instance
         #self.vgs = vgs
         #assert isinstance(vgs, VigicruesStation)
