@@ -77,7 +77,7 @@ class CurrentcostWatts(CurrentcostSource):
         data = data.get("msg", {}).get("ch1", {}).get("watts", None)
         self._logger.info("%s: get data (%s)" % (self.name, data))
         try:
-            self.value = int(data)
+            self.value = float(data)
             self.error = None
         except ValueError:
             self.error = "Invalid data"
