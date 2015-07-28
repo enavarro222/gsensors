@@ -52,10 +52,12 @@ class VigicruesStation(object):
 
 
 class VigicruesSource(AutoUpdateValue):
-    def __init__(self, name, station_id):
+    def __init__(self, station_id, name=None):
         """
         :attr station_id: vigicrues station id
         """
+        if name is None:
+            name = "vgs%d" % station_id
         #:attr vgs: :class:`VigicruesStation` instance
         #self.vgs = vgs
         #assert isinstance(vgs, VigicruesStation)
