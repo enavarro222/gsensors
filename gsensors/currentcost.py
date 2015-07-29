@@ -45,9 +45,9 @@ class CurrentcostSerial(object):
                     data = data.replace("\x00", "")
                     try:
                         data = xmltodict.parse(data)
+                        self.get_data(data)
                     except ExpatError as err:
                         self._logger.error(str(err))
-                    self.get_data(data)
                 gevent.sleep(0.5)
         finally:
             self._ser.close()
