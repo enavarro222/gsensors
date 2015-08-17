@@ -180,3 +180,7 @@ class StupidCount(AutoUpdateValue):
     def update(self):
         self.value += 1
 
+
+def cb_print(source):
+    print("%s: %s%s" % (source.name, source.value, source.unit))
+
