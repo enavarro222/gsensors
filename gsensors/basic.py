@@ -53,7 +53,7 @@ class DataSource(object):
         """ Reset the value (and last_update) if the value changed OR if the
         timeout is over.
         
-        To force update with same value (within timeout)
+        To force update with same value (within timeout) use set_value()
         """
         now = datetime.now()
         if val != self._value or (timeout >= 0 and now-self.last_update > timeout):

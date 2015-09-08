@@ -224,7 +224,7 @@ class MFISource(DataSource):
         if data["_source"] != "ws":
             return
         try:
-            self.set_value(self.parse_data(data))
+            self.value = self.parse_data(data)
             self.error = None
         except KeyError, ValueError:
             self.error = "Invalid data"
