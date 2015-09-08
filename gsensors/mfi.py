@@ -142,6 +142,17 @@ class MFIDevice(object):
             self.set_output(port, value)
         return _action
 
+    def SwitchOnAction(self, port):
+        def _action(*args, **kwargs):
+            value = not self.get_output(port)
+            self.set_output(port, True)
+        return _action
+
+    def SwitchOffAction(self, port):
+        def _action(*args, **kwargs):
+            self.set_output(port, False)
+        return _action
+
     def incoming_ws_data(self, data):
         data["_source"] = "ws"  #indicate it come's from web socket
         self._incoming_data(data)
