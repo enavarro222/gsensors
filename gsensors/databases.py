@@ -1,5 +1,6 @@
 #-*- coding:utf-8 -*-
 import sys
+import logging
 
 from influxdb import InfluxDBClient
 
@@ -10,18 +11,19 @@ class InfluxDBPublish(object):
         self.influxdb = influxdb
         self.tags = tags
         self.measurement = measurement
+        self._logger = logging.getLogger("gsensors.InfluxDBPublish")
 
-    def __call__(self, source):
+    def __call__(self, value):
         #TODO what when error ?
         json_body = [
             {
                 "measurement": self.measurement,
                 "tags": self.tags,
                 "fields": {
-                    "value": source.value
+                    "value": value
                 }
             }
         ]
         self.influxdb.write_points(json_body)
-
+        self._logger.debug("Write for measurement '%s'" % self.measurement)
 

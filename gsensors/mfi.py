@@ -139,17 +139,19 @@ class MFIDevice(object):
     def SwitchAction(self, port):
         def _action(*args, **kwargs):
             value = not self.get_output(port)
+            self._logger.debug("Switch to : %s" % value)
             self.set_output(port, value)
         return _action
 
     def SwitchOnAction(self, port):
         def _action(*args, **kwargs):
-            value = not self.get_output(port)
+            self._logger.debug("Switch ON")
             self.set_output(port, True)
         return _action
 
     def SwitchOffAction(self, port):
         def _action(*args, **kwargs):
+            self._logger.debug("Switch OFF")
             self.set_output(port, False)
         return _action
 
