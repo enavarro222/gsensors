@@ -1,9 +1,9 @@
 #-*- coding:utf-8 -*-
 import logging
 from datetime import datetime
-from collections import defaultdict
 
 import gevent
+from events import Events
 
 from gsensors.utils import full_exc_info
 
@@ -29,10 +29,13 @@ class DataSource(object):
     """
     debug = False
     timeout = -1 # no timeout by default
-
+   #TODO
+   
     def __init__(self, name=None, unit=None, timeout=None):
         self.name = name or self.__class__.__name__
         self._logger = logging.getLogger("gsensors.%s" % self.name)
+
+        self.events = Events()
 
         self.unit = unit
         self._value = 0
@@ -40,8 +43,6 @@ class DataSource(object):
 
         if timeout is not None:
             self.timeout = timeout
-        self.cb_changed = []
-        self.cb_value = defaultdict(list)
         self.last_update = None     # datetime on last update
 
     @property
@@ -50,29 +51,17 @@ class DataSource(object):
 
     @value.setter
     def value(self, val):
-        """ Reset the value (and last_update) if the value changed OR if the
-        timeout is over.
-        
-        To force update with same value (within timeout) use set_value()
+        """ Set/Update the value
         """
         now = datetime.now()
-        if val != self._value or (timeout >= 0 and now-self.last_update > timeout):
-            self._value = val
-            self.last_update = now
-            self._changed()
+        self.set_value(val, update_time=now)
 
     def set_value(self, val, update_time=None):
-        """ Set the value (and update_time)
-        
-        Callbacks are trigger if update_time or value haved changed
-        """
-        changed = self._value != val or self.last_update != update_time
-        self._value = val
-        if update_time is None:
-            update_time = datetime.now()
-        self.last_update = update_time
-        if changed:
-            self._changed()
+        self.events.on_update(val)
+        if val != self._value:
+            self._value = val
+            self.last_update = update_time
+            self.events.on_change(val)
 
     @property
     def error(self):
@@ -82,27 +71,63 @@ class DataSource(object):
     def error(self, err):
         if err != self._error:
             self._error = err
-            self._changed()
+            # call error listener
+            if self._error is not None:
+                self.on_error(err)
+            else:
+                self.on_error_release()
 
-    def _changed(self):
-        self.last_update = datetime.now()
-        for callback in self.cb_value[self.value]:
-            self._checked_call(callback)
-        for callback in self.cb_changed:
-            self._checked_call(callback)
+    def _checked_callback(self, callback):
+        def wrapper(*args, **kwargs):
+            try:
+                callback(*args, **kwargs)
+            except Exception as err:
+                self.error = "Callback error"
+                self._logger.error("Callback error: %s" % err, exc_info=full_exc_info())
+        return wrapper
 
-    def _checked_call(self, callback):
-        try:
-            callback(self)
-        except Exception as err:
-            self.error = "Error"
-            self._logger.error("Callback error: %s" % err, exc_info=full_exc_info())
+    def _callback_wrap_onvalue(self, callback, value):
+        def wrapper(new_value):
+            self._logger.debug("%s =? %s" % (new_value, value))
+            if new_value == value:
+                callback(new_value)
+        return wrapper
 
-    def on_change(self, callback):
-        self.cb_changed.append(callback)
+    def on_update(self, callback, value=None):
+        """ Callback when value is updated (even if it stays the same). 
+        
+        If `value` is given the callback will be called only if the new value
+        equals it.
+        """
+        if value is not None:
+            callback = self._callback_wrap_onvalue(callback, value)
+        callback = self._checked_callback(callback)
+        self.events.on_update += callback
 
-    def on_value(self, value, callback):
-        self.cb_value[value].append(callback)
+    def on_change(self, callback, value=None):
+        """ Callback when value changed. If `value` is given the callback
+        will be called only if the new value equals it.
+        """
+        if value is not None:
+            callback = self._callback_wrap_onvalue(callback, value)
+        callback = self._checked_callback(callback)
+        self.events.on_change += callback
+
+    def on_timeout(self, callback):
+        #TODO
+        raise NotImplementedError
+
+    def on_error(self, callback):
+        """ Callback when an error occurs (property error changed and is not None)
+        """
+        callback = self._checked_callback(callback)
+        self.events.on_error += callback
+
+    def on_error_release(self, callback):
+        """ Callback when there is no more error (property error changed back to None)
+        """
+        callback = self._checked_callback(callback)
+        self.events.on_error_release += callback
 
     def start(self):
         pass
@@ -170,7 +195,6 @@ class AutoUpdateValue(DataSource):
 
     def start(self):
         self.worker = gevent.spawn(self.update_work)
-
 
 
 class StupidCount(AutoUpdateValue):
