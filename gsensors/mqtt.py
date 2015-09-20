@@ -32,8 +32,8 @@ class PipaMQTTClient(object):
 
     def PublishAction(self, topic, payload=None):
         if payload is None:
-            def _action(source, *args, **kwargs):
-                data = "%s" % source.value
+            def _action(value):
+                data = "%s" % value
                 self._logger.debug("publish %s: %s" % (topic, data))
                 self.publish(topic, payload=data)
         else:

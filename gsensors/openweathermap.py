@@ -67,7 +67,8 @@ class OwmSource(AutoUpdateValue):
     def update(self):
         value = self.owm_client.data
         for key in self.key.split("/"):
-            value = self.parse_value(value[key])
+            value = value[key]
+        value = self.parse_value(value)
         self.set_value(value, self.owm_client.dt)
 
     def parse_value(self, value):
