@@ -57,11 +57,11 @@ class DataSource(object):
         self.set_value(val, update_time=now)
 
     def set_value(self, val, update_time=None):
-        self.events.on_update(val)
+        self.events.on_update(self, val)
         if val != self._value:
             self._value = val
             self.last_update = update_time
-            self.events.on_change(val)
+            self.events.on_change(self, val)
 
     @property
     def error(self):
@@ -70,12 +70,13 @@ class DataSource(object):
     @error.setter
     def error(self, err):
         if err != self._error:
-            self._error = err
             # call error listener
+            old_err = self._error
+            self._error = err
             if self._error is not None:
-                self.on_error(err)
+                self.events.on_error(self, err)
             else:
-                self.on_error_release()
+                self.events.on_error_release(self, old_err)
 
     def _checked_callback(self, callback):
         def wrapper(*args, **kwargs):
@@ -208,3 +209,13 @@ class StupidCount(AutoUpdateValue):
 def cb_print(source):
     print("%s: %s%s" % (source.name, source.value, source.unit))
 
+
+def PrintValue():
+    def _print(source, value):
+        print("%s: %s %s" % (source.name, value, source.unit if source.unit is not None else ""))
+    return _print
+
+def PrintError():
+    def _print(source, error):
+        print("%s ERROR: %s" % (source.name, error))
+    return _print
