@@ -88,10 +88,15 @@ class DataSource(object):
         return wrapper
 
     def _callback_wrap_onvalue(self, callback, value):
-        def wrapper(new_value):
-            self._logger.debug("%s =? %s" % (new_value, value))
-            if new_value == value:
-                callback(new_value)
+        if callable(value):
+            def wrapper(source, new_value):
+                if value(new_value):
+                    callback(new_value)
+        else:
+            def wrapper(source, new_value):
+                #self._logger.debug("%s =? %s" % (new_value, value))
+                if new_value == value:
+                    callback(new_value)
         return wrapper
 
     def on_update(self, callback, value=None):
