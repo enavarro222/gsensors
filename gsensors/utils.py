@@ -1,10 +1,18 @@
 #-*- coding:utf-8 -*-
-import logging
 import sys
 
+import logging
+import logging.config
+
+
 def get_logger(level=logging.DEBUG):
-    logger = logging.getLogger("gsensors")
     ## logger
+    logger = logging.getLogger("gsensors")
+    ## Prevent ext modules trash log handler...
+    logging.config.dictConfig({
+        'version': 1,
+        'disable_existing_loggers': True,
+    })
     logger.setLevel(level)
     # create console handler with a higher log level
     ch = logging.StreamHandler()
