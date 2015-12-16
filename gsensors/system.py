@@ -1,6 +1,9 @@
 #-*- coding:utf-8 -*-
 import logging
+
 import psutil
+from nut2 import PyNUTClient, PyNUTError
+
 from gsensors import DataSource, AutoUpdateValue
 
 class CpuUsage(AutoUpdateValue):
@@ -73,7 +76,6 @@ class NutUPS(AutoUpdateValue):
         self._sources = {}
 
     def update(self):
-        from nut2 import PyNUTClient, PyNUTError
         nut = PyNUTClient(host=self.host, port=self.port, login=self.login, password=self.password)
         # get data
         #TODO: add try catch on it to detect error
