@@ -195,7 +195,7 @@ class AutoUpdateValue(DataSource):
 
     def update_work(self):
         while True:
-            self._logger.info("Update !")
+            self._logger.debug("Update !")
             self._checked_update()
             gevent.sleep(self.update_freq)
 
