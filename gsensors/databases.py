@@ -13,7 +13,7 @@ class InfluxDBPublish(object):
         self.measurement = measurement
         self._logger = logging.getLogger("gsensors.InfluxDBPublish")
 
-    def __call__(self, value):
+    def __call__(self, source, value):
         #TODO what when error ?
         json_body = [
             {
