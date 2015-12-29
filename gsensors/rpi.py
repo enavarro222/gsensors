@@ -2,9 +2,21 @@
 """ Drivers for common sensors on a rPi
 """
 import sys
+from subprocess import PIPE, Popen
+
 import gevent
 
 from gsensors import AutoUpdateValue
+
+
+class PiCPUTemp(AutoUpdateValue):
+    unit = "°C"
+    update_freq = 60
+
+    def update(self):
+        process = Popen(['vcgencmd', 'measure_temp'], stdout=PIPE)
+        output, _error = process.communicate()
+        self.value = float(output[output.index('=') + 1:output.rindex("'")])
 
 
 class DHTTemp(AutoUpdateValue):

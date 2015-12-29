@@ -6,12 +6,34 @@ from nut2 import PyNUTClient, PyNUTError
 
 from gsensors import DataSource, AutoUpdateValue
 
+
 class CpuUsage(AutoUpdateValue):
     unit = "%"
-    update_freq = 1.9
+    update_freq = 60
 
     def update(self):
         self.value = psutil.cpu_percent(interval=0)
+
+
+class RamUsage(AutoUpdateValue):
+    unit = "%"
+    update_freq = 60
+
+    def update(self):
+        ram = psutil.phymem_usage()
+        self.value = ram.percent
+
+
+class DiskUsage(AutoUpdateValue):
+    unit = "%"
+    update_freq = 120
+
+    def __init__(self, path="/"):
+        super(DiskUsage, self).__init__()
+
+    def update(self):
+        dd = psutil.disk_usage(self.path)
+        self.value = dd.percent
 
 
 class NutUPS(AutoUpdateValue):
