@@ -110,9 +110,16 @@ class EspSound(MQTTDevice):
         "DS8": 4978,
     }
 
-    def tune_play(self, note, duration, force=False):
+    def tune_play(self, note, duration, octave=None, force=False):
+        try:
+            octave = int(note[-1])
+        except ValueError:
+            octave = octave or 4
+            note = "%s%s" % (note, octave)
         if note in self.NOTES:
             note = self.NOTES[note]
+        elif not isinstance(note, int):
+            raise ValueError("Invalid note: %s" % note)
         self._publish("tune/play", "%s-%s%s" % (note, duration, "-1" if force else ""))
 
     def tune_stop(self):
@@ -211,6 +218,7 @@ class MClavier(EspSound):
         self._key2note = dict(self.KEY2NOTE)
         self._note2key = {note: key for key, note in self.KEY2NOTE[:-1]} #Skip last one
         self._key2pos =  {key: num for num, (key, _) in enumerate(self.KEY2NOTE)}
+        self.keys = set(key for key, _ in self.KEY2NOTE)
         # sources
         self.signal = IntSource(self._mqtt_client, topic=self.prefix + "info/signal")
         self.battery = IntSource(self._mqtt_client, topic=self.prefix + "info/battery")
@@ -223,10 +231,28 @@ class MClavier(EspSound):
         self._hold.on_update(self.on_hold)
 
     def note2key(self, note):
-        return self._note2key[note[:-1]]
+        _note = note
+        try:
+            octave = int(note[-1])
+            _note = note[:-1]
+        except ValueError:
+            pass
+        return self._note2key[_note]
 
-    def play_key(self, note, duration=400):
+    def key2note(self, key, octave=4):
+        return "%s%s" % (self._key2note[key], octave if key != "PINK" else octave + 1)
+
+    def play_note(self, note, duration=400, octave=None):
+        try:
+            octave = int(note[-1])
+            note = note[:-1]
+        except ValueError:
+            octave = octave or 4
         key = self.note2key(note)
+        self.play_key(key, octave=octave, duration=duration)
+
+    def play_key(self, key, octave=4, duration=400):
+        note = self.key2note(key, octave=octave)
         self.leds_off()
         self.tune_play(note, duration)
         self.led_on(key)
