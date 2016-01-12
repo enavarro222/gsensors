@@ -173,8 +173,6 @@ class LampChevet(EspLampWithSound):
     def __init__(self, mqtt_client, prefix="sys/mclavier/"):
         super(LampChevet, self).__init__(mqtt_client, prefix=prefix)
         # sources
-        self.signal = IntSource(self._mqtt_client, topic=self.prefix + "info/signal")
-        self.vcc = IntSource(self._mqtt_client, topic=self.prefix + "info/vcc")
         self.in_temp = FloatSource(self._mqtt_client, topic=self.prefix + "temp/1")
         self.out_temp = FloatSource(self._mqtt_client, topic=self.prefix + "temp/0")
 
@@ -281,5 +279,25 @@ class MClavier(EspSound):
         pass
 
     def on_hold(self, source, value):
+        pass
+
+
+class BobinEsp(MQTTDevice):
+    def __init__(self, mqtt_client, prefix="sys/bobinesp/"):
+        super(BobinEsp, self).__init__(self, mqtt_client, prefix=prefix)
+        self.signal = IntSource(self._mqtt_client, topic=self.prefix + "info/signal")
+        self.vcc = IntSource(self._mqtt_client, topic=self.prefix + "info/vcc")
+        self.pos1 = IntSource(self._mqtt_client, topic=self.prefix + "info/pos/1")
+        self.pos2 = IntSource(self._mqtt_client, topic=self.prefix + "info/pos/2")
+
+    def move(self, position, motor=None):
+        _motor = ""
+        if motor in [1, "1"]:
+            _motor = "/1"
+        elif motor in [2, "2"]:
+            _motor = "/2"
+        self._publish("move" + _motor, position)
+
+    def reset(self, motor, callback):
         pass
 
