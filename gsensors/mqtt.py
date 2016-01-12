@@ -5,6 +5,7 @@
 # http://www.hivemq.com/mqtt-essentials-wrap-up/
 import logging
 from datetime import datetime
+import socket
 
 import gevent
 from paho.mqtt.client import Client
@@ -13,19 +14,25 @@ from gsensors.basic import DataSource
 
 class PipaMQTTClient(object): 
 
-    def __init__(self, host, port=1883, **kwargs):
+    def __init__(self, client_id, host, port=1883, **kwargs):
         self._logger = logging.getLogger("gsensors.PipaMQTTClient")
         self._host = host
         self._port = port
-        self._mqtt_client = Client()
+        self._mqtt_client = Client(client_id=client_id, clean_session=False)
         self._mqtt_client.on_connect = self.on_connect
+        self._mqtt_client.on_disconnect = self.on_disconnect
         self._mqtt_client.on_message = self.on_message
+
         self.worker = None
+        self.worker_runner = None
         self.topics_sources = {}
         self.running = False
+        self.connected = False
 
     def publish(self, topic, payload=None, qos=0, retain=False):
         # check connected
+        if not self.connected:
+            raise RuntimeError("MQTT client not connected ! ")
         if not self.running:
             raise RuntimeError("MQTT client not running ! ")
         self._mqtt_client.publish(topic, payload=payload, qos=qos, retain=retain)
@@ -42,14 +49,23 @@ class PipaMQTTClient(object):
                 self.publish(topic, payload=payload)
         return _action
 
+    def on_disconnect(self, client, userdata, rc):
+        self._logger.error("Disconnected with result code: "+str(rc))
+        self.connected = False
+        self.connect()
+
     def on_connect(self, client, userdata, flags, rc):
-        self._logger.info("Connected with result code: "+str(rc))
-        # Subscribing in on_connect() means that if we lose the connection and
-        # reconnect then subscriptions will be renewed.
-        #client.subscribe("$SYS/#")
-        #client.subscribe("#")
-        for topic in self.topics_sources.keys():
-            client.subscribe(topic)
+        if rc == 0:
+            self._logger.info("Connected to MQTT broker")
+            self.connected = True
+            # Subscribing in on_connect() means that if we lose the connection and
+            # reconnect then subscriptions will be renewed.
+            #client.subscribe("$SYS/#")
+            #client.subscribe("#")
+            for topic in self.topics_sources.keys():
+                client.subscribe(topic)
+        else:
+            self._logger.error("Connection fail with error: %s" % rc)
 
     def on_message(self, client, userdata, msg):
         self._logger.debug("get a msg %s: %s" % (msg.topic, msg.payload))
@@ -66,18 +82,30 @@ class PipaMQTTClient(object):
         self._mqtt_client.subscribe(topic)
         return source
 
+    def connect(self):
+        self.worker_runner = gevent.spawn(self._connect)
+
+    def _connect(self):
+        while not self.connected:
+            try:
+                #self._mqtt_client.reinitialise()
+                self._mqtt_client.connect(host=self._host, port=self._port, keepalive=60)
+            except socket.error as err:
+                self._logger.error("Imposible to connect to MQTT: %s" % err)
+                self._logger.info("Will retry in 2 seconds")
+            gevent.sleep(2)
+
     def start(self):
         if self.running:
             return
         self.running = True
-        self._mqtt_client.connect(host=self._host, port=self._port, keepalive=60)
         self.worker = gevent.spawn(self._mqtt_loop)
+        self.connect()
 
     def _mqtt_loop(self):
-        while True:
-            #print("mqqt loop")
-            self._mqtt_client.loop(timeout=.09)
-            gevent.sleep(0.05)
+        while self.running:
+            self._mqtt_client.loop(timeout=1)
+            gevent.sleep(0.1)
 
 
 class MQTTSource(DataSource):
