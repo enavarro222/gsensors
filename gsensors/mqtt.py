@@ -104,8 +104,8 @@ class PipaMQTTClient(object):
 
     def _mqtt_loop(self):
         while self.running:
-            self._mqtt_client.loop(timeout=1)
-            gevent.sleep(0.1)
+            self._mqtt_client.loop(timeout=0.9)
+            gevent.sleep(0.06)
 
 
 class MQTTSource(DataSource):

@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 import sys
-from time import sleep
+import logging
 
 from gsensors.mqtt import MQTTSource, IntSource, FloatSource
 
 class MQTTDevice(object):
-    def __init__(self, mqtt_client, prefix):
+    def __init__(self, mqtt_client, prefix, name=None):
+        self.name = name or self.__class__.__name__
+        self._logger = logging.getLogger("gsensors.%s" % self.name)
         self._mqtt_client = mqtt_client
         self.prefix = prefix
 
@@ -172,6 +174,8 @@ class LampChevet(EspLampWithSound):
 
     def __init__(self, mqtt_client, prefix="sys/mclavier/"):
         super(LampChevet, self).__init__(mqtt_client, prefix=prefix)
+        self.signal = IntSource(self._mqtt_client, topic=self.prefix + "info/signal")
+        self.vcc = IntSource(self._mqtt_client, topic=self.prefix + "info/vcc")
         # sources
         self.in_temp = FloatSource(self._mqtt_client, topic=self.prefix + "temp/1")
         self.out_temp = FloatSource(self._mqtt_client, topic=self.prefix + "temp/0")
@@ -284,7 +288,7 @@ class MClavier(EspSound):
 
 class BobinEsp(MQTTDevice):
     def __init__(self, mqtt_client, prefix="sys/bobinesp/"):
-        super(BobinEsp, self).__init__(self, mqtt_client, prefix=prefix)
+        super(BobinEsp, self).__init__(mqtt_client, prefix=prefix)
         self.signal = IntSource(self._mqtt_client, topic=self.prefix + "info/signal")
         self.vcc = IntSource(self._mqtt_client, topic=self.prefix + "info/vcc")
         self.pos1 = IntSource(self._mqtt_client, topic=self.prefix + "info/pos/1")
@@ -296,6 +300,9 @@ class BobinEsp(MQTTDevice):
             _motor = "/1"
         elif motor in [2, "2"]:
             _motor = "/2"
+        position = min(position, 75000)
+        #TODO; add logging warning
+        self._logger.info("Mv %s to pos: %s" % (motor, position))
         self._publish("move" + _motor, position)
 
     def reset(self, motor, callback):
