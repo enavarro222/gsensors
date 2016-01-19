@@ -37,16 +37,16 @@ class PipaMQTTClient(object):
             raise RuntimeError("MQTT client not running ! ")
         self._mqtt_client.publish(topic, payload=payload, qos=qos, retain=retain)
 
-    def PublishAction(self, topic, payload=None):
+    def PublishAction(self, topic, payload=None, retain=False):
         if payload is None:
             def _action(source, value):
                 data = "%s" % value
                 self._logger.debug("publish %s: %s" % (topic, data))
-                self.publish(topic, payload=data)
+                self.publish(topic, payload=data, retain=retain)
         else:
             def _action(*args, **kwargs):
                 self._logger.debug("publish %s: %s" % (topic, payload))
-                self.publish(topic, payload=payload)
+                self.publish(topic, payload=payload, retain=retain)
         return _action
 
     def on_disconnect(self, client, userdata, rc):

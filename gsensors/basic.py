@@ -200,7 +200,8 @@ class AutoUpdateValue(DataSource):
             gevent.sleep(self.update_freq)
 
     def start(self):
-        self.worker = gevent.spawn(self.update_work)
+        if self.worker is None:
+            self.worker = gevent.spawn(self.update_work)
 
 
 class StupidCount(AutoUpdateValue):
