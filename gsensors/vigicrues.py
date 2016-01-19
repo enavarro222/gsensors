@@ -17,11 +17,12 @@ class VigicruesStation(object):
         self.station_id = station_id
         self._data = None
         self._last_update = 0
-        self.nb_heures = 1 # by default fetch the data just for the last hour
+        self.nb_heures = 24 # need to be 24, no data else... (20160119)
+        #self.nb_heures = 1 # by default fetch the data just for the last hour
 
     @property
     def url_hauteur(self):
-        return "http://www.vigicrues.gouv.fr/niveau3.php?idstation=%s&idspc=25&typegraphe=h&AffProfondeur=%d&AffRef=auto&AffPrevi=non&&ong=2" % (self.station_id, self.nb_heures)
+        return "http://www.vigicrues.gouv.fr/niveau3.php?CdStationHydro=%s&CdEntVigiCru=25&typegraphe=h&AffProfondeur=%d&AffRef=auto&AffPrevi=non&&ong=2" % (self.station_id, self.nb_heures)
 
     @property
     def data(self):
@@ -33,6 +34,7 @@ class VigicruesStation(object):
 
     def _get_data(self):
         from pyquery import PyQuery as pq
+        print(self.url_hauteur)
         data = pq(url=self.url_hauteur)
         # get table datas
         all_values = ([td.text for td in pq(tr)("td")] for tr in data("table.liste tr"))
