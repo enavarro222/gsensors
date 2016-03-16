@@ -95,6 +95,10 @@ class PipaMQTTClient(object):
                 self._logger.info("Will retry in 2 seconds")
             gevent.sleep(2)
 
+    def wait_connected(self):
+        while not self.connected:
+            gevent.sleep(1)
+
     def start(self):
         if self.running:
             return
@@ -104,8 +108,8 @@ class PipaMQTTClient(object):
 
     def _mqtt_loop(self):
         while self.running:
-            self._mqtt_client.loop(timeout=0.9)
-            gevent.sleep(0.06)
+            self._mqtt_client.loop(timeout=0.02)
+            gevent.sleep(0.01)
 
 
 class MQTTSource(DataSource):
