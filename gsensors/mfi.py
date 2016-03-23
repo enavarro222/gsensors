@@ -26,6 +26,7 @@ from gsensors.utils import full_exc_info
 class MFIConnectionError(RuntimeError):
     pass
 
+
 class MFIWebSocketClient(WebSocketBaseClient):
     def __init__(self, mfi_device):
         self._logger = logging.getLogger("gsensors.mfi.MFIWebSocketClient")
@@ -69,6 +70,7 @@ class MFIDevice(object):
         self._host = host
         self._user = user
         self._password = password
+        self._ws = None   # WebSocket client
         self.running = False
         self._token = None
         self._sources = defaultdict(list)
@@ -131,10 +133,12 @@ class MFIDevice(object):
         return self.data_sensors[port]["output"]
 
     def set_output(self, port, value):
-        data = {
-            "output": 0 if value in [0, False, "off"] else 1,
-        }
-        res = requests.post("%s/sensors/%s" % (self.url, port), data, cookies=self.cookies)
+        value = 0 if value in [0, False, "off"] else 1
+        data = {"sensors":[{"output":value, "port":port}]}
+        self._ws.send(json.dumps(data))
+        #Old way use HTTP
+        #data = {"output": value}
+        #res = requests.post("%s/sensors/%s" % (self.url, port), data, cookies=self.cookies)
 
     def SwitchAction(self, port):
         def _action(*args, **kwargs):
@@ -177,8 +181,8 @@ class MFIDevice(object):
                 source.update(_data)
 
     def _update(self):
-        ws = MFIWebSocketClient(self)
-        ws.connect()
+        self._ws = MFIWebSocketClient(self)
+        self._ws.connect()
         while True:
             sleep_time = self.get_update_freq
             begin_at = time()
@@ -188,10 +192,10 @@ class MFIDevice(object):
             except MFIConnectionError:
                 self._logger.warning("connection error")
                 # reconnect
-                ws.close()
+                self._ws.close()
                 self.login()
-                ws = MFIWebSocketClient(self)
-                ws.connect()
+                self._ws = MFIWebSocketClient(self)
+                self._ws.connect()
                 sleep_time = .05 # retry quickly
             except Exception as err:
                 #TODO indicate error to sources
@@ -203,8 +207,8 @@ class MFIDevice(object):
 
     def start(self):
         if not self.running:
-          gevent.spawn(self._update)
-          self.running = True
+            gevent.spawn(self._update)
+            self.running = True
 
 
 class MFISource(DataSource):
@@ -259,48 +263,4 @@ class MFIOutput(MFISource):
     def parse_data(self, data):
         return data["sensor"]["output"]
 
-
-
-def main():
-    mpower = MFIDevice("192.168.100.13")
-    user = raw_input("login: ")
-    password = raw_input("password: ")
-
-    mpower.login(user, password)
-
-    sources = [
-      MFIPower(mpower, port=1),
-      MFIOutput(mpower, port=1)
-    ]
-
-    def change_callback(src):
-        print("%s:%s" % (src.name, src.value))
-
-    # plug change callback
-    for src in sources:
-        src.on_change(change_callback)
-
-    for src in sources:
-        src.start()
-
-    gevent.wait()
-
-
-
-if __name__ == '__main__':
-    ## logger
-    level = logging.DEBUG
-    logger = logging.getLogger("gsensors")
-    logger.setLevel(level)
-    # create console handler with a higher log level
-    ch = logging.StreamHandler()
-    ch.setLevel(level)
-    # create formatter and add it to the handlers
-    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(name)s:%(message)s')
-    ch.setFormatter(formatter)
-    # add the handlers to the logger
-    logger.addHandler(ch)
-
-    import sys
-    sys.exit(main())
 
