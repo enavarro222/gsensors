@@ -14,7 +14,7 @@ class PiCPUTemp(AutoUpdateValue):
     update_freq = 60
 
     def update(self):
-        process = Popen(['vcgencmd', 'measure_temp'], stdout=PIPE)
+        process = Popen(['/opt/vc/bin/vcgencmd', 'measure_temp'], stdout=PIPE)
         output, _error = process.communicate()
         self.value = float(output[output.index('=') + 1:output.rindex("'")])
 
