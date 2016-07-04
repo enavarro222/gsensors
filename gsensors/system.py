@@ -20,7 +20,7 @@ class RamUsage(AutoUpdateValue):
     update_freq = 60
 
     def update(self):
-        ram = psutil.phymem_usage()
+        ram = psutil.virtual_memory()
         self.value = ram.percent
 
 
