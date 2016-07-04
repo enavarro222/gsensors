@@ -146,7 +146,7 @@ class IntSource(MQTTSource):
     """ MQTT source for integer data
     """
     def parse_msg(self, msg):
-        return int(msg.payload)
+        return int(round(float(msg.payload)))
 
 class FloatSource(MQTTSource):
     """ MQTT source for flaot data
