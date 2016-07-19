@@ -12,7 +12,7 @@ class InfluxDBClient(OriginalInfluxDBClient):
 class InfluxDBPublish(object):
 
     def __init__(self, influxdb, measurement, tags):
-        assert(isinstance(influxdb, InfluxDBClient))
+        assert(isinstance(influxdb, OriginalInfluxDBClient))
         self.influxdb = influxdb
         self.tags = tags
         self.measurement = measurement
