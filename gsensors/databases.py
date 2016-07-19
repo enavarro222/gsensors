@@ -2,7 +2,12 @@
 import sys
 import logging
 
-from influxdb import InfluxDBClient
+from influxdb import InfluxDBClient as OriginalInfluxDBClient
+
+class InfluxDBClient(OriginalInfluxDBClient):
+    def Publish(self, measurement, tags):
+        return InfluxDBPublish(self, measurement, tags)
+
 
 class InfluxDBPublish(object):
 
